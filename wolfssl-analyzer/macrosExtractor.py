@@ -22,6 +22,7 @@
 import os
 import sys
 import re
+import json
 
 def SearchIfdef(txt):
     """
@@ -58,20 +59,39 @@ def Search(txt):
     macros.sort()  # Sort the list by MACRO_NAME
     return macros
 
-def main():
-    if len(sys.argv) > 1:
-        filename = sys.argv[1]
-        if not os.path.isfile(filename):
-            print("File does not exist.")
-            sys.exit(1)
-        with open(filename, 'r') as f:
-            txt = f.read()
-        macros = Search(txt)
-        for macro in macros:
-            print(macro, file=sys.stdout)
-    else:
-        print("Please provide a filename as a command line argument.")
+def wolfSSLSearch():
+    """
+    Search for macro names in the wolfSSL source code.
+    This function should be called from the wolfssl directory.
+    The result is saved in a JSON file named 'macros.json'.
+    """
+
+    # wolfssl/src
+    srcdir = os.getcwd() + "/src"
+    if not os.path.isdir(srcdir):
+        print("src directory does not exist.")
         sys.exit(1)
+    srcfiles = ["src/" + file for file in os.listdir(srcdir) if file.endswith(".c")]
+    macros = dict()
+    for srcfile in srcfiles:
+        with open(srcfile, 'r') as f:
+            txt = f.read()
+        macros[srcfile] = Search(txt)
+
+    # wolfcrypt/src
+    cryptsrcdir = os.getcwd() + "/wolfcrypt/src"
+    cryptsrcfiles = ["wolfcrypt/src/" + file for file in os.listdir(cryptsrcdir) if file.endswith(".c")]
+    for cryptsrcfile in cryptsrcfiles:
+        with open(cryptsrcfile, 'r') as f:
+            txt = f.read()
+        macros[cryptsrcfile] = Search(txt)
+
+    with open("macros.json", 'w') as f:
+        json.dump(macros, f)
+    return
+
+def main():
+    wolfSSLSearch()
 
 if __name__ == '__main__':
     main()
