@@ -22,7 +22,7 @@
 import os
 import sys
 import re
-import json
+import argparse
 
 def SearchIfdef(txt):
     """
@@ -47,51 +47,75 @@ def SearchDefined(txt):
     """
     return re.findall(r'defined\s*\((\w+)\)', txt)
 
-def Search(txt):
+def Search(txt) -> set[str]:
     """
     returns a list of macro names found in the given text.
     """
-    macros = []
-    macros += SearchIfdef(txt)
-    macros += SearchIfndef(txt)
-    macros += SearchDefined(txt)
-    macros = list(set(macros))  # Remove duplicates
-    macros.sort()  # Sort the list by MACRO_NAME
+    macros = set()
+    macros.update(SearchIfdef(txt))
+    macros.update(SearchIfndef(txt))
+    macros.update(SearchDefined(txt))
     return macros
 
-def wolfSSLSearch():
+def ExtractMacrosFromFiles(files:list[str]):
     """
-    Search for macro names in the wolfSSL source code.
-    This function should be called from the wolfssl directory.
-    The result is saved in a JSON file named 'macros.json'.
+    Extract macros from source files.
     """
-
-    # wolfssl/src
-    srcdir = os.getcwd() + "/src"
-    if not os.path.isdir(srcdir):
-        print("src directory does not exist.")
-        sys.exit(1)
-    srcfiles = ["src/" + file for file in os.listdir(srcdir) if file.endswith(".c")]
-    macros = dict()
-    for srcfile in srcfiles:
-        with open(srcfile, 'r') as f:
-            txt = f.read()
-        macros[srcfile] = Search(txt)
-
-    # wolfcrypt/src
-    cryptsrcdir = os.getcwd() + "/wolfcrypt/src"
-    cryptsrcfiles = ["wolfcrypt/src/" + file for file in os.listdir(cryptsrcdir) if file.endswith(".c")]
-    for cryptsrcfile in cryptsrcfiles:
-        with open(cryptsrcfile, 'r') as f:
-            txt = f.read()
-        macros[cryptsrcfile] = Search(txt)
-
-    with open("macros.json", 'w') as f:
-        json.dump(macros, f)
-    return
+    macros = set()
+    for file in files:
+        try:
+            with open(file, 'r') as f:
+                txt = f.read()
+                macros.update(Search(txt))
+        except FileNotFoundError as e:
+            e.filename = file
+            raise e
+    return macros
 
 def main():
-    wolfSSLSearch()
+    parser = argparse.ArgumentParser(description='Extract macros from source files.')
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('-f', '--files', nargs='+', help='Source files to extract macros from.')
+    group.add_argument('-d', '--directories', nargs='+', help='Directories to search for source files.')
+
+    parser.add_argument('-e', '--extensions', nargs='+', help='File extension(s) to search for.')
+    parser.add_argument('-r', '--recursive', action='store_false', help='Recursively search for source files in the given directory.')
+    
+    args = parser.parse_args()
+
+    macros = set()
+    if args.files:
+        try:
+            macros = ExtractMacrosFromFiles(args.files)
+        except FileNotFoundError as e:
+            print(f'{e.filename} : No such file exists.', file=sys.stderr)
+            sys.exit(1)
+        if not macros:
+            print('No macros found.', file=sys.stderr)
+    elif args.directories:
+        if not args.extensions:
+            print('You need to specify file extensions to search for.([-e, --extensions])', file=sys.stderr)
+            sys.exit(1)
+        for directory in args.directories:
+            if os.path.isdir(directory):
+                if args.recursive:
+                    files = [filename for filename in os.listdir(directory) if os.path.isfile(os.path.join(directory, filename)) and filename.endswith(tuple(args.extensions))]
+                    for file in files:
+                        macros.update(ExtractMacrosFromFiles([os.path.join(directory, file)]))
+                else:
+                    for root, _, files in os.walk(directory):
+                        for file in files:
+                            if file.endswith(tuple(args.extensions)):
+                                macros.update(ExtractMacrosFromFiles([os.path.join(root, file)]))
+            else:
+                print(f'{directory} : No such directory exists.', file=sys.stderr)
+                sys.exit(1)
+    else:
+        print('You need to specify either files or directories.', file=sys.stderr)
+        sys.exit(1)
+    for macro in sorted(macros):
+        print(macro)
+    return
 
 if __name__ == '__main__':
     main()
