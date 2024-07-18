@@ -45,7 +45,8 @@ def SearchDefined(txt):
     Extract macro names matching 'defined(MACRO_NAME)'.
     '!defined(MACRO_NAME)' also matches.
     """
-    return re.findall(r'defined\s*\((\w+)\)', txt)
+    matched = re.findall(r'defined\s*\((\w+)\)', txt)
+    return matched
 
 def Search(txt) -> set[str]:
     """
@@ -57,7 +58,7 @@ def Search(txt) -> set[str]:
     macros.update(SearchDefined(txt))
     return macros
 
-def ExtractMacrosFromFiles(files:list[str]):
+def ExtractMacrosFromFiles(files:list[str]) -> set[str]:
     """
     Extract macros from source files.
     """
@@ -72,6 +73,16 @@ def ExtractMacrosFromFiles(files:list[str]):
             raise e
     return macros
 
+def ExcludeIncludeGuard(macros:set[str]) -> set[str]:
+    """
+    Exclude include guards from the given set of macros.
+    """
+    include_guards = set()
+    for macro in macros:
+        if re.match(r'^\w+_H$', macro):
+            include_guards.add(macro)
+    return macros - include_guards
+
 def main():
     parser = argparse.ArgumentParser(description='Extract macros from source files.')
     group = parser.add_mutually_exclusive_group(required=True)
@@ -80,6 +91,8 @@ def main():
 
     parser.add_argument('-e', '--extensions', nargs='+', help='File extension(s) to search for.')
     parser.add_argument('-r', '--recursive', action='store_false', help='Recursively search for source files in the given directory.')
+
+    parser.add_argument('-i', '--include-guards', action='store_true', help='Exclude include guards(ends with "_H") from the result.')
     
     args = parser.parse_args()
 
@@ -113,6 +126,8 @@ def main():
     else:
         print('You need to specify either files or directories.', file=sys.stderr)
         sys.exit(1)
+    if args.include_guards:
+        macros = ExcludeIncludeGuard(macros)
     for macro in sorted(macros):
         print(macro)
     return
