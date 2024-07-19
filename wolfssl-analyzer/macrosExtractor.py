@@ -22,6 +22,7 @@
 import os
 import sys
 import re
+import argparse
 
 def SearchIfdef(txt):
     """
@@ -44,34 +45,92 @@ def SearchDefined(txt):
     Extract macro names matching 'defined(MACRO_NAME)'.
     '!defined(MACRO_NAME)' also matches.
     """
-    return re.findall(r'defined\s*\((\w+)\)', txt)
+    matched = re.findall(r'defined\s*\((\w+)\)', txt)
+    return matched
 
-def Search(txt):
+def Search(txt) -> set[str]:
     """
     returns a list of macro names found in the given text.
     """
-    macros = []
-    macros += SearchIfdef(txt)
-    macros += SearchIfndef(txt)
-    macros += SearchDefined(txt)
-    macros = list(set(macros))  # Remove duplicates
-    macros.sort()  # Sort the list by MACRO_NAME
+    macros = set()
+    macros.update(SearchIfdef(txt))
+    macros.update(SearchIfndef(txt))
+    macros.update(SearchDefined(txt))
     return macros
 
+def ExtractMacrosFromFiles(files:list[str]) -> set[str]:
+    """
+    Extract macros from source files.
+    """
+    macros = set()
+    for file in files:
+        try:
+            with open(file, 'r') as f:
+                txt = f.read()
+                macros.update(Search(txt))
+        except FileNotFoundError as e:
+            e.filename = file
+            raise e
+    return macros
+
+def ExcludeIncludeGuard(macros:set[str]) -> set[str]:
+    """
+    Exclude include guards from the given set of macros.
+    """
+    include_guards = set()
+    for macro in macros:
+        if re.match(r'^\w+_H$', macro):
+            include_guards.add(macro)
+    return macros - include_guards
+
 def main():
-    if len(sys.argv) > 1:
-        filename = sys.argv[1]
-        if not os.path.isfile(filename):
-            print("File does not exist.")
+    parser = argparse.ArgumentParser(description='Extract macros from source files.')
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('-f', '--files', nargs='+', help='Source files to extract macros from.')
+    group.add_argument('-d', '--directories', nargs='+', help='Directories to search for source files.')
+
+    parser.add_argument('-e', '--extensions', nargs='+', help='File extension(s) to search for.')
+    parser.add_argument('-r', '--recursive', action='store_false', help='Recursively search for source files in the given directory.')
+
+    parser.add_argument('-i', '--include-guards', action='store_true', help='Exclude include guards(ends with "_H") from the result.')
+    
+    args = parser.parse_args()
+
+    macros = set()
+    if args.files:
+        try:
+            macros = ExtractMacrosFromFiles(args.files)
+        except FileNotFoundError as e:
+            print(f'{e.filename} : No such file exists.', file=sys.stderr)
             sys.exit(1)
-        with open(filename, 'r') as f:
-            txt = f.read()
-        macros = Search(txt)
-        for macro in macros:
-            print(macro, file=sys.stdout)
+        if not macros:
+            print('No macros found.', file=sys.stderr)
+    elif args.directories:
+        if not args.extensions:
+            print('You need to specify file extensions to search for.([-e, --extensions])', file=sys.stderr)
+            sys.exit(1)
+        for directory in args.directories:
+            if os.path.isdir(directory):
+                if args.recursive:
+                    files = [filename for filename in os.listdir(directory) if os.path.isfile(os.path.join(directory, filename)) and filename.endswith(tuple(args.extensions))]
+                    for file in files:
+                        macros.update(ExtractMacrosFromFiles([os.path.join(directory, file)]))
+                else:
+                    for root, _, files in os.walk(directory):
+                        for file in files:
+                            if file.endswith(tuple(args.extensions)):
+                                macros.update(ExtractMacrosFromFiles([os.path.join(root, file)]))
+            else:
+                print(f'{directory} : No such directory exists.', file=sys.stderr)
+                sys.exit(1)
     else:
-        print("Please provide a filename as a command line argument.")
+        print('You need to specify either files or directories.', file=sys.stderr)
         sys.exit(1)
+    if args.include_guards:
+        macros = ExcludeIncludeGuard(macros)
+    for macro in sorted(macros):
+        print(macro)
+    return
 
 if __name__ == '__main__':
     main()
