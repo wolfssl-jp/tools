@@ -29,37 +29,37 @@ import argparse
 import sys
 
 def ExtractMacros(header_file:str) -> set[str]:
-	"""
-	Extract macro names from the given header file.
-	"""
-	try:
-		with open(header_file, 'r') as f:
-			txt = f.read()
-		return set(re.findall(r'#define\s+(\w+).*\n', txt))
-	except FileNotFoundError as e:
-		raise e
+    """
+    Extract macro names from the given header file.
+    """
+    try:
+        with open(header_file, 'r') as f:
+            txt = f.read()
+        return set(re.findall(r'#define\s+(\w+).*\n', txt))
+    except FileNotFoundError as e:
+        raise e
 
 def main():
-	parser = argparse.ArgumentParser(description='Compare the macros defined in two header files')
-	parser.add_argument('-s', '--source', type=str, required=True, help='Source header file')
-	parser.add_argument('-t', '--target', type=str, required=True, help='Target header file')
-	parser.add_argument('-i', '--incremental-output', type=str, default="increment.txt", help='Incremental output file')
-	parser.add_argument('-d', '--decremental-output', type=str, default="decrement.txt", help='Decremental output file')
-	args = parser.parse_args()
+    parser = argparse.ArgumentParser(description='Compare the macros defined in two header files')
+    parser.add_argument('-s', '--source', type=str, required=True, help='Source header file')
+    parser.add_argument('-t', '--target', type=str, required=True, help='Target header file')
+    parser.add_argument('-i', '--incremental-output', type=str, default="increment.txt", help='Incremental output file. Default : increment.txt')
+    parser.add_argument('-d', '--decremental-output', type=str, default="decrement.txt", help='Decremental output file. Default : decrement.txt')
+    args = parser.parse_args()
 
-	try:
-		source_macros = ExtractMacros(args.source)
-		target_macros = ExtractMacros(args.target)
+    try:
+        source_macros = ExtractMacros(args.source)
+        target_macros = ExtractMacros(args.target)
 
-		with open(args.incremental_output, 'w') as f:
-			for macro in target_macros - source_macros:
-				f.write(macro + '\n')
-		with open(args.decremental_output, 'w') as f:
-			for macro in source_macros - target_macros:
-				f.write(macro + '\n')
-	except FileNotFoundError as e:
-		print(f'{e.filename} : No such file exists', file=sys.stderr)
-		sys.exit(1)
+        with open(args.incremental_output, 'w') as f:
+            for macro in target_macros - source_macros:
+                f.write(macro + '\n')
+        with open(args.decremental_output, 'w') as f:
+            for macro in source_macros - target_macros:
+                f.write(macro + '\n')
+    except FileNotFoundError as e:
+        print(f'{e.filename} : No such file exists', file=sys.stderr)
+        sys.exit(1)
 
 if __name__ == "__main__":
-	main()
+    main()

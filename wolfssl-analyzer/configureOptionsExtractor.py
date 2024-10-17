@@ -39,7 +39,7 @@ def OptionsExtractor(configure_output:str) -> list[str]:
 def main():
     parser = argparse.ArgumentParser(description='List all the configure options from wolfssl/configure')
     parser.add_argument('--wolfssl-path', required=True, help='Path to wolfssl source code')
-    parser.add_argument('--output', help='Output file to save the configure options')
+    parser.add_argument('--output', help='Output file to save the configure options. Default: stdout')
     parser.add_argument('--print-error', action='store_true', help='Print error message while running configure command')
     args = parser.parse_args()
 
