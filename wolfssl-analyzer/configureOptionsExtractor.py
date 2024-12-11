@@ -22,24 +22,41 @@
 import re
 import argparse
 import subprocess
+import json
 
-def OptionsExtractor(configure_output:str) -> list[str]:
+def OptionsExtractor(configure_output:str) -> dict[str, str]:
     """
     Extract configure options from the given configure output.
     """
-    options = []
+    options = dict()
+    valid_row = False
+    option_buf = ""
+    description_buf = []
     for line in configure_output.splitlines():
-        if line.startswith('  --'):
-            option = line.split()[0]
-            words = line.strip().split()
-            option = re.split(r'[=\[]', words[0])[0]
-            options.append(option)
+        words = line.strip().split()
+        if words == ['Optional', 'Features:']:
+            valid_row = True
+        if not valid_row or not words:
+            continue
+        if words == ['Optional', 'Packages:']:
+            if option_buf:
+                options[option_buf] = {'Description':' '.join(description_buf)}
+            break
+        if words[0].startswith('--'):
+            if option_buf:
+                options[option_buf] = {'Description':' '.join(description_buf)}
+            option_buf = re.split(r'[=\[]', words[0])[0]
+            description_buf = words[1:]
+        else:
+            description_buf += words
+
     return options
 
 def main():
     parser = argparse.ArgumentParser(description='List all the configure options from wolfssl/configure')
     parser.add_argument('--wolfssl-path', required=True, help='Path to wolfssl source code')
     parser.add_argument('--output', help='Output file to save the configure options. Default: stdout')
+    parser.add_argument('--description-output', help='Output file to save the configure options with description. Default: None')
     parser.add_argument('--print-error', action='store_true', help='Print error message while running configure command')
     args = parser.parse_args()
 
@@ -54,11 +71,15 @@ def main():
     
     if args.output:
         with open(args.output, 'w') as f:
-            for option in options:
+            for option in options.keys():
                 f.write(option + '\n')
     else:
-        for option in options:
+        for option in options.keys():
             print(option)
+    
+    if args.description_output:
+        with open(args.description_output, 'w') as f:
+            json.dump(options, f, indent=4)
 
 if __name__ == '__main__':
     main()

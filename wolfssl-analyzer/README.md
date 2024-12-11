@@ -6,6 +6,9 @@ For each configure option, get the difference from the default for the macro nam
 
 If there are any options skipped due to configure errors, "failed_options.txt" will be generated.
 
+The output is generated in Markdown format.  
+An example of the output can be found in `outputExample.md`.
+
 ### options
 ```
   -h, --help            show this help message and exit
@@ -13,17 +16,31 @@ If there are any options skipped due to configure errors, "failed_options.txt" w
                         wolfSSL home dir path.
   --options-file OPTIONS_FILE
                         Text file with options to be executed.
-                        If not provided, all options will be
-                        executed
-  --txtformat           Output data format. Enable to TXT,
-                        disable to JSON. Default: Disable(JSON)
-  --output OUTPUT       Output file to save the results.
-                        Default: stdout
+                        Cannot be used with --single-option. If
+                        neither --options-file nor --single-option
+                        is specified, all options will be executed.
+  --single-option SINGLE_OPTION
+                        Specify a single option to execute. Cannot
+                        be used with --options-file.
+  --output OUTPUT       Output file to save the results. Default:
+                        stdout
+  --diff-only           Skips output for options that have no
+                        differences.
 ```
 
 ### example
 ```
-python3 configureOptionsComparator.py --wolfssl-path <<wolfssl home directory>> --output result.json
+python3 configureOptionsComparator.py --wolfssl-path <<wolfssl home directory>> --output result.md
+```
+
+If you want to apply only some limited options, 
+you can use `--options-file` or `--single-option`.  
+When you use `--single-option` to specify a single option name, 
+you should remove "--" at the beginning of the option name.
+```
+python3 configureOptionsComparator.py --wolfssl-path <<wolfssl home directory>> --output result.md --options-file options.txt
+
+python3 configureOptionsComparator.py --wolfssl-path <<wolfssl home directory>> --output result.md --single-option enable-all
 ```
 
 ## configureOptionsExtractor.py
@@ -34,7 +51,9 @@ Get the list of valid options from the output of wolfssl/configure.
   -h, --help            show this help message and exit
   --wolfssl-path WOLFSSL_PATH
                         Path to wolfssl source code
-  --output OUTPUT       Output file to save the configure options. Defaults: stdout
+  --output OUTPUT       Output file to save the configure options. Default: stdout
+  --description-output DESCRIPTION_OUTPUT
+                        Output file to save the configure options with description. Default: None
   --print-error         Print error message while running configure command
 ```
 

@@ -29,10 +29,11 @@ WOLFSSLPATH = None
 TMP_DIR = "./tmp"
 CONFOPTEXT = os.path.join(os.path.dirname(__file__), "configureOptionsExtractor.py")
 HEADCOMP = os.path.join(os.path.dirname(__file__),"headerComparator.py")
-OPTIONSFILE = "options.txt"
-DEFAULTHEADER = "default.h"
-TMP_INCREMENT = "increment.txt"
-TMP_DECREMENT = "decrement.txt"
+OPTIONSFILE = ".options.txt"
+DESCRIPTIONFILE = ".description.json"
+DEFAULTHEADER = ".default.h"
+TMP_INCREMENT = ".increment.txt"
+TMP_DECREMENT = ".decrement.txt"
 FAILED_OPTIONS_FILE = "failed_options.txt"
 
 def configureOptionsExtractor() -> list[str]:
@@ -40,7 +41,9 @@ def configureOptionsExtractor() -> list[str]:
     Extract all configure options from wolfssl/configure.
     """
     global WOLFSSLPATH, OPTIONSFILE
-    program_command = ['sh', '-c', f'python3 {CONFOPTEXT} --wolfssl-path {WOLFSSLPATH} --output {TMP_DIR}/{OPTIONSFILE}']
+    program_command = ['sh', '-c', f'python3 {CONFOPTEXT} --wolfssl-path {WOLFSSLPATH} \
+                       --output {TMP_DIR}/{OPTIONSFILE} \
+                        --description-output {TMP_DIR}/{DESCRIPTIONFILE}']
     result = subprocess.run(program_command, capture_output=True, text=True)
     if result.returncode != 0:
         print('Error has occurred while running configure options extractor', file=sys.stderr)
@@ -109,6 +112,8 @@ def cleanup():
     print("Cleaning up temporary files...")
     if os.path.exists(f"{TMP_DIR}/{OPTIONSFILE}"):
         os.remove(f"{TMP_DIR}/{OPTIONSFILE}")
+    if os.path.exists(f"{TMP_DIR}/{DESCRIPTIONFILE}"):
+        os.remove(f"{TMP_DIR}/{DESCRIPTIONFILE}")
     if os.path.exists(f"{TMP_DIR}/{DEFAULTHEADER}"):
         os.remove(f"{TMP_DIR}/{DEFAULTHEADER}")
     if os.path.exists(f"{TMP_DIR}/{TMP_INCREMENT}"):
@@ -122,10 +127,14 @@ def cleanup():
 def main():
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--wolfssl-path', type=str, required=True, help='wolfSSL home dir path.')
-    parser.add_argument('--options-file', type=str, help='Text file with options to be executed. If not provided, all options will be executed')
-    parser.add_argument('--txtformat', action='store_true', default=False, \
-                        help='Output data format. Enable to TXT, disable to JSON. Default: Disable(JSON)')
+    parser_group = parser.add_mutually_exclusive_group()
+    parser_group.add_argument('--options-file', type=str, help='Text file with options to be executed. '
+                        'Cannot be used with --single-option. '
+                        'If neither --options-file nor --single-option is specified, all options will be executed.')
+    parser_group.add_argument('--single-option', type=str, help='Specify a single option to execute. '
+                        'Cannot be used with --options-file.')
     parser.add_argument('--output', type=str, default=None, help="Output file to save the results. Default: stdout")
+    parser.add_argument('--diff-only', action='store_true', help='Skips output for options that have no differences.')
 
     args = parser.parse_args()
 
@@ -137,14 +146,16 @@ def main():
         sys.exit(1)
 
     options = []
+    configureOptionsExtractor()
     if args.options_file: 
         if os.path.isfile(args.options_file) == False:
             print(f"Invalid options file: {args.options_file}", file=sys.stderr)
             sys.exit(1)
         with open(args.options_file, 'r') as f:
             options = f.read().splitlines()
+    elif args.single_option:
+        options = ["--" + args.single_option]
     else:
-        configureOptionsExtractor()
         with open(f"{TMP_DIR}/{OPTIONSFILE}", 'r') as f:
             options = f.read().splitlines()
 
@@ -155,29 +166,37 @@ def main():
 
     diffdict = {}
     options_len = len(options)
-    for idx, option in enumerate(options):
-        print(f"Processing {idx+1}/{options_len} : {option}")
-        diffdict[option] = recordDiff(option)
+    with open(f"{TMP_DIR}/{DESCRIPTIONFILE}", 'r') as f:
+        descriptions = json.loads(f.read())
+        for idx, option in enumerate(options):
+            print(f"Processing {idx+1}/{options_len} : {option}")
+            diffdict[option] = recordDiff(option)
+            if option in descriptions.keys():
+                diffdict[option]["Description"] = descriptions[option]["Description"]
 
-    if args.txtformat:
-        outputstr = ""
-        for option, diff in diffdict.items():
-            outputstr += f"{option}:\n"
-            outputstr += f"\tIncremental: {diff['increment']}\n"
-            outputstr += f"\tDecremental: {diff['decrement']}\n"
-        if args.output:
-            with open(args.output, 'w') as f:
-                f.write(outputstr)
-        else:
-            print("### Show Results ###")
-            print(outputstr)
-            print("####################")
+    output_txt = ""
+    for option in diffdict.keys():
+        if args.diff_only and not diffdict[option]["increment"] and not diffdict[option]["decrement"]:
+            continue
+        output_txt += f"### `{option}`\n\n"
+        if "Description" in diffdict[option]:
+            output_txt += f"{diffdict[option]['Description']}\n\n"
+        if "increment" in diffdict[option] and diffdict[option]["increment"]:
+            output_txt += "#### Enables\n"
+            for line in diffdict[option]["increment"]:
+                output_txt += f"- `{line}`\n"
+            output_txt += "\n"
+        if "decrement" in diffdict[option] and diffdict[option]["decrement"]:
+            output_txt += "#### Removes\n"
+            for line in diffdict[option]["decrement"]:
+                output_txt += f"- `{line}`\n"
+            output_txt += "\n"
+
+    if args.output:
+        with open(args.output, 'w') as f:
+            f.write(output_txt)
     else:
-        if args.output:
-            with open(args.output, 'w') as f:
-                json.dump(diffdict, f, indent=4)
-        else:
-            print(diffdict)
+        print(output_txt)
 
     if os.path.exists(f"{FAILED_OPTIONS_FILE}"):
         print("Some options are failed to execute configure command.")
