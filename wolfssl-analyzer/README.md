@@ -15,17 +15,17 @@ An example of the output can be found in `outputExample.md`.
   --wolfssl-path WOLFSSL_PATH
                         wolfSSL home dir path.
   --options-file OPTIONS_FILE
-                        Text file with options to be executed.
-                        Cannot be used with --single-option. If
-                        neither --options-file nor --single-option
-                        is specified, all options will be executed.
+                        Text file with options to be executed. Cannot be used with --single-option or --opposite-option. If neither --options-file nor
+                        --single-option is specified, all options will be executed.
   --single-option SINGLE_OPTION
-                        Specify a single option to execute. Cannot
-                        be used with --options-file.
-  --output OUTPUT       Output file to save the results. Default:
-                        stdout
-  --diff-only           Skips output for options that have no
-                        differences.
+                        Specify a single option to execute. Cannot be used with --options-file or --opposite-option.
+  --opposite-option     If an option name contains "enable" or "disable," opposite option will automatically be executed. Cannot be used with --options-file or
+                        --single-option.
+  --output OUTPUT       Output file to save the results. Default: stdout
+  --diff-only           Skips output for options that have no differences.
+  --exclude-options EXCLUDE_OPTIONS
+                        Text file with options to be excluded from execution.If you use --opposite-option, you should exclude both "enable" and "disable"
+                        options.
 ```
 
 ### example
@@ -54,6 +54,8 @@ Get the list of valid options from the output of wolfssl/configure.
   --output OUTPUT       Output file to save the configure options. Default: stdout
   --description-output DESCRIPTION_OUTPUT
                         Output file to save the configure options with description. Default: None
+  --output-opposite     If an option name contains "enable" or "disable," the program will automatically output the opposite option ("disable" or "enable").
+                        Default: Disabled
   --print-error         Print error message while running configure command
 ```
 

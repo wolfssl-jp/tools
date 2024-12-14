@@ -24,7 +24,7 @@ import argparse
 import subprocess
 import json
 
-def OptionsExtractor(configure_output:str) -> dict[str, str]:
+def OptionsExtractor(configure_output:str, opposite:bool = False) -> dict[str, str]:
     """
     Extract configure options from the given configure output.
     """
@@ -34,18 +34,39 @@ def OptionsExtractor(configure_output:str) -> dict[str, str]:
     description_buf = []
     for line in configure_output.splitlines():
         words = line.strip().split()
+        
         if words == ['Optional', 'Features:']:
             valid_row = True
         if not valid_row or not words:
             continue
         if words == ['Optional', 'Packages:']:
             if option_buf:
-                options[option_buf] = {'Description':' '.join(description_buf)}
+                if option_buf in options.keys():
+                    if opposite and ('enable' in option_buf or 'disable' in option_buf):
+                        options[option_buf]['Description'] = ' '.join(description_buf)
+                else:
+                    options[option_buf] = {'Description':' '.join(description_buf)}
+                    if opposite and ('enable' in option_buf or 'disable' in option_buf):
+                        if 'enable' in option_buf:
+                            opposite_option = option_buf.replace('enable', 'disable')
+                        else:
+                            opposite_option = option_buf.replace('disable', 'enable')
+                        options[opposite_option] = {'Description':''}
             break
         if words[0].startswith('--'):
             if option_buf:
-                options[option_buf] = {'Description':' '.join(description_buf)}
-            option_buf = re.split(r'[=\[]', words[0])[0]
+                if option_buf in options.keys():
+                    if opposite and ('enable' in option_buf or 'disable' in option_buf):
+                        options[option_buf]['Description'] = ' '.join(description_buf)
+                else:
+                    options[option_buf] = {'Description':' '.join(description_buf)}
+                    if opposite and ('enable' in option_buf or 'disable' in option_buf):
+                        if 'enable' in option_buf:
+                            opposite_option = option_buf.replace('enable', 'disable')
+                        else:
+                            opposite_option = option_buf.replace('disable', 'enable')
+                        options[opposite_option] = {'Description':''}
+            option_buf = re.split(r'[=\[\]()]', words[0])[0]
             description_buf = words[1:]
         else:
             description_buf += words
@@ -57,6 +78,7 @@ def main():
     parser.add_argument('--wolfssl-path', required=True, help='Path to wolfssl source code')
     parser.add_argument('--output', help='Output file to save the configure options. Default: stdout')
     parser.add_argument('--description-output', help='Output file to save the configure options with description. Default: None')
+    parser.add_argument('--output-opposite', action='store_true', help='If an option name contains "enable" or "disable," the program will automatically output the opposite option ("disable" or "enable"). Default: Disabled')
     parser.add_argument('--print-error', action='store_true', help='Print error message while running configure command')
     args = parser.parse_args()
 
@@ -67,7 +89,7 @@ def main():
         if args.print_error:
             print(result.stderr)
     output_configure = str(result.stdout)
-    options = OptionsExtractor(output_configure)
+    options = OptionsExtractor(output_configure, args.output_opposite)
     
     if args.output:
         with open(args.output, 'w') as f:
