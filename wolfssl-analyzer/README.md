@@ -13,17 +13,17 @@ An example of the output can be found in `outputExample.md`.
   --wolfssl-path WOLFSSL_PATH
                         wolfSSL home dir path.
   --options-file OPTIONS_FILE
-                        Text file with options to be executed. Cannot be used with --single-option or ----both-enable-disable. If neither --options-file nor
+                        Text file with options to be executed. Cannot be used with --single-option or --both-enable-disable. If neither --options-file nor
                         --single-option is specified, all options will be executed.
   --single-option SINGLE_OPTION
-                        Specify a single option to execute. Cannot be used with --options-file or ----both-enable-disable.
+                        Specify a single option to execute. Cannot be used with --options-file or --both-enable-disable.
   --both-enable-disable
                         If an option name contains "enable" or "disable," opposite option will automatically be executed. Cannot be used with --options-file or
                         --single-option.
   --output OUTPUT       Output file to save the results. Default: stdout
   --diff-only           Skips output for options that have no differences.
   --exclude-options EXCLUDE_OPTIONS
-                        Text file with options to be excluded from execution.If you use ----both-enable-disable, you should exclude both "enable" and "disable"
+                        Text file with options to be excluded from execution.If you use --both-enable-disable, you should exclude both "enable" and "disable"
                         options.
 ```
 

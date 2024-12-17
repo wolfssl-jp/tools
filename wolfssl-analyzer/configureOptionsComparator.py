@@ -140,10 +140,10 @@ def main():
         parser.add_argument('--wolfssl-path', type=str, required=True, help='wolfSSL home dir path.')
         parser_group = parser.add_mutually_exclusive_group()
         parser_group.add_argument('--options-file', type=str, help='Text file with options to be executed. '
-                            'Cannot be used with --single-option or ----both-enable-disable. '
+                            'Cannot be used with --single-option or --both-enable-disable. '
                             'If neither --options-file nor --single-option is specified, all options will be executed.')
         parser_group.add_argument('--single-option', type=str, help='Specify a single option to execute. '
-                            'Cannot be used with --options-file or ----both-enable-disable.')
+                            'Cannot be used with --options-file or --both-enable-disable.')
         parser_group.add_argument('--both-enable-disable', action='store_true', 
                             help='If an option name contains "enable" or "disable," '
                             'opposite option will automatically be executed. '
@@ -151,7 +151,7 @@ def main():
         parser.add_argument('--output', type=str, default=None, help="Output file to save the results. Default: stdout")
         parser.add_argument('--diff-only', action='store_true', help='Skips output for options that have no differences.')
         parser.add_argument('--exclude-options', type=str, help='Text file with options to be excluded from execution.'
-                            'If you use ----both-enable-disable, you should exclude both "enable" and "disable" options.')
+                            'If you use --both-enable-disable, you should exclude both "enable" and "disable" options.')
 
         args = parser.parse_args()
 
