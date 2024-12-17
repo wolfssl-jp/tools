@@ -2,8 +2,6 @@
 ## configureOptionsComparator.py
 For each configure option, get the difference from the default for the macro name to be defined.
 
-"--options-file" must be a TXT file with one option name per line.
-
 If there are any options skipped due to configure errors, "failed_options.txt" will be generated.
 
 The output is generated in Markdown format.  
@@ -15,18 +13,48 @@ An example of the output can be found in `outputExample.md`.
   --wolfssl-path WOLFSSL_PATH
                         wolfSSL home dir path.
   --options-file OPTIONS_FILE
-                        Text file with options to be executed.
-                        Cannot be used with --single-option. If
-                        neither --options-file nor --single-option
-                        is specified, all options will be executed.
+                        Text file with options to be executed. Cannot be used with --single-option or --both-enable-disable. If neither --options-file nor
+                        --single-option is specified, all options will be executed.
   --single-option SINGLE_OPTION
-                        Specify a single option to execute. Cannot
-                        be used with --options-file.
-  --output OUTPUT       Output file to save the results. Default:
-                        stdout
-  --diff-only           Skips output for options that have no
-                        differences.
+                        Specify a single option to execute. Cannot be used with --options-file or --both-enable-disable.
+  --both-enable-disable
+                        If an option name contains "enable" or "disable," opposite option will automatically be executed. Cannot be used with --options-file or
+                        --single-option.
+  --output OUTPUT       Output file to save the results. Default: stdout
+  --diff-only           Skips output for options that have no differences.
+  --exclude-options EXCLUDE_OPTIONS
+                        Text file with options to be excluded from execution.If you use --both-enable-disable, you should exclude both "enable" and "disable"
+                        options.
 ```
+
+#### --options-file
+You can specify name of options by providing name of txt file (such as the following) with this option.
+```
+--enable-benchmark
+--enable-all
+--enable-tls13
+--enable-sslv3
+--enable-tlsv10
+--enable-oldtls
+--enable-tlsv12
+--enable-dtls13
+--enable-wolfssh
+--enable-wolftpm
+--enable-wolfclu
+--enable-usersettings
+
+```
+
+#### --single-option
+If you need output with only one configure option, use this option.
+You should remove "--" at the beginning of the specified option name.  
+Example: Only "./configure --enable-all" will be executed.
+```
+python3 configureOptionsComparator.py --wolfssl-path <<wolfssl home directory>> --single-option enable-all
+```
+
+#### --both-enable-disable
+If a option name includes "enable" or "disable" (For example --enable-tls13), this program will be execute both --enable-tls13 and --disable-tls13 with this option.
 
 ### example
 ```
@@ -54,6 +82,8 @@ Get the list of valid options from the output of wolfssl/configure.
   --output OUTPUT       Output file to save the configure options. Default: stdout
   --description-output DESCRIPTION_OUTPUT
                         Output file to save the configure options with description. Default: None
+  --both-enable-disable     If an option name contains "enable" or "disable," the program will automatically output the opposite option ("disable" or "enable").
+                        Default: Disabled
   --print-error         Print error message while running configure command
 ```
 
